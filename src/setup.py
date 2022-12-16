@@ -61,7 +61,26 @@ def libp2p_build_install():
 
         with tarfile.open(dest, 'r:gz') as tar:
             dirname = os.path.join(tempdir, tar.getmembers()[0].name)
-            tar.extractall(tempdir)
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(tar, tempdir)
             os.rename(dirname, os.path.join(tempdir, f'go-libp2p-daemon-{P2PD_VERSION[1:]}'))
 
         result = subprocess.run(f'go build -o {shlex.quote(os.path.join(here, "src", "src_cli", "p2pd"))}',
